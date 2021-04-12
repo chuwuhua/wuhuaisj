@@ -111,57 +111,79 @@ net.to(device)
 https://pytorch.org/docs/1.2.0/nn.html#tripletmarginloss
 pytorch提供的loss函数，目前似乎不支持多个正样本
 margin ？| a+p-n+margin | 设置多少我不知道，怎么调整我不知道 default:1
-如果 loss 稳定在 margin 左右，可能是网络陷入了局部极值，导致对所有样本的预测都是相同的
-p default 2
+    如果 loss 稳定在 margin 左右，可能是网络陷入了局部极值，导致对所有样本的预测都是相同的
+p:成对的距离标准 default 2
+ps:后面的都可以忽略
+swap: 论文中描述的距离交换
+size_average: True:训练批次中损失的平均数 False:批量的损失将被忽略
+reduce：不推荐使用
+reduction:不推荐使用
 '''
 triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
 
-# 给每层网络设置学习率
+
+
+'''
+net.parameters() 获取网络参数
+requires_grad=False 固定参数  =True 非固定参数
+
+optimizer 优化器，用来保存当前的状态，并能够根据计算得到的梯度来更新参数
+    给它一个可进行迭代优化的包含了所有参数列表params。 
+    然后，您可以指定程序优化特定的选项，例如学习速率，权重衰减等
+Adam算法：(Adaptive Moment Estimation)本质上是带有动量项的RMSprop，
+    它利用梯度的一阶矩估计和二阶矩估计动态调整每个参数的学习率。
+    它的优点主要在于经过偏置校正后，每一次迭代学习率都有个确定范围，使得参数比较平稳。
+    param 参数列表
+    lr 学习率，学习率可以动态调整，调整方法暂时未知
+'''
 params = [p for p in net.parameters() if p.requires_grad]
 optimizer = optim.Adam(params, lr=0.0001)
 
+# 对训练集的训练次数
 epochs = 3
 train_steps = len(train_loader)
 
+# 存储和绘图相关
 losses = []
 uuid_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 
-for epoch in range(epochs):
-    # 构造存储路径
 
+for epoch in range(epochs):
+    # 根据程序开始时间和epochs构造存储路径
+    # loss 存储路径 txt
     tmp_loss_name = '%s_epoch%d.txt' % (uuid_str, epoch)
     loss_path = os.path.join(store_root, 'loss_store', 'loss_txt') + "/" + tmp_loss_name
-
+    # 训练的结果存储路径
     tmp_file_name = '%s_epoch%d.pth' % (uuid_str, epoch)
     save_path = os.path.join(store_root, 'result_store') + "/" + tmp_file_name
-
+    # loss图片png存储路径，loss图片有三张，loss是合并在一起的，最后一张图片包含了epochs次训练的所有值
     tmp_pic_name = '%s_epoch%d.png' % (uuid_str, epoch)
     pic_path = os.path.join(store_root, 'loss_store', 'loss_png') + "/" + tmp_pic_name
 
+    # 训练集
     net.train()
     running_loss = 0.0
-    train_bar = tqdm(train_loader)
+    train_bar = tqdm(train_loader)  #进度条美化
     for step, image_sample in enumerate(train_bar):
         anchor_sample, positive_sample, negative_sample = image_sample
-        optimizer.zero_grad()
+        optimizer.zero_grad() # 每个batch梯度置零
         anchor_logits = net(anchor_sample.to(device))
         positive_logits = net(positive_sample.to(device))
         negative_logits = net(negative_sample.to(device))
         loss = triplet_loss(anchor_logits, positive_logits, negative_logits)
 
-        loss.backward()
-        optimizer.step()
+        loss.backward() # 反向传播，计算当前梯度
+        optimizer.step() # 根据梯度更新网络参数
+
+
         running_loss += loss.item()
         train_bar.desc = "train epoch[{}/{}] loss:{:.3f}".format(epoch + 1, epochs, loss)
-
-        # print(loss)
-
         losses.append(loss.item())
         with open(loss_path, 'a') as f:
             f.write("train epoch[{}/{}] step {} loss:{:.3f}\n".format(epoch + 1, epochs, step + 1, loss))
             f.close()
 
-    # 测试数据
+    # 测试集
     net.eval()
     acc = 0.0  # accumulate accurate number / epoch
     with torch.no_grad():
