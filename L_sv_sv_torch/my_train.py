@@ -10,32 +10,58 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
-from L_sv_sv_torch.model import resnet34
+# from L_sv_sv_torch.model import resnet34 # 使用torchvisioin自有模块，不使用此定义
+from torchvision.models.resnet import \
+    resnet18, resnet34, resnet50, resnet101, resnet152, resnext50_32x4d, resnext101_32x8d
 from L_sv_sv_torch.process_data import ProcessData
 import matplotlib.pyplot as plt
+
 # 使用cpu或gpu
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print("using {} device.".format(device))
 
-# data_root = "数据融合实验"
+# data_root = "数据融合实验"，路径比较复杂
+# store_root = '数据融合实验/wuhuaisj/L_sv_sv_torch
 data_root = os.path.abspath(os.path.join(os.getcwd(), "../.."))  # get data root path
-image_path = os.path.join(data_root, "原始数据", "imgForTorch")
-assert os.path.exists(image_path), "{} path does not exist.".format(image_path)  # assert 检查条件，符合则继续运行，否则停止
+store_root = os.path.join(data_root, 'wuhuaisj', 'L_sv_sv_torch')
 
+# batch_size
 batch_size = 16
+print('Using {} batch for training'.format(batch_size))
+
+# 使用多少线程读入图片，为避免报错，且数据量适中，使用单个线程
 # nw = min([os.cpu_count(), batch_size if batch_size > 1 else 0, 4])
 nw = 0
 print('Using {} dataloader workers every process'.format(nw))
 
+'''
+transformer 调整此处:
+原始图片 height,width：256x512
+
+还可增加 resize
+
+归一化方法：
+transformer.ToTensor() 将PILImage或numpy数组转为 tensor
+transformer.Normalize([means],[std])
+[0.485, 0.456, 0.406], [0.229, 0.224, 0.225]这一组平均值是从imagenet训练集中抽样算出来的
+可计算自己数据集的均值和方差：
+    https://blog.csdn.net/weixin_38533896/article/details/85951903
+'''
 data_transform = {
     "train": transforms.Compose([transforms.ToTensor(),
                                  transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])]),
     "val": transforms.Compose([transforms.ToTensor(),
                                transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])}
+
+# 加载自己的数据集，已经重写DataLoader函数，将数据集构造成 [anchor,positive,negative ]的样本
+# anchor:锚点，positive：最近的5个图片中随机选取一个，negative:1/2~3/4 距离样本中随机选取一个
+# train_dataset：训练集 validate_dataset: 测试集
+
+image_path = os.path.join(data_root, "原始数据", "imgForTorch")
+assert os.path.exists(image_path), "{} path does not exist.".format(image_path)  # assert 检查条件，符合则继续运行，否则停止
+
 train_dataset = ProcessData(image_path, train=True, transform=data_transform['train'])
 train_num = len(train_dataset)
-
-# train_dataset 已经重写为符合三重损失的形式
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=nw)
 
 validate_dataset = ProcessData(image_path, train=False, transform=data_transform['val'])
@@ -44,17 +70,49 @@ validate_loader = DataLoader(validate_dataset, batch_size=batch_size, shuffle=Fa
 
 print("using {} images for training, {} images for validation.".format(train_num, val_num))
 
-net = resnet34()
-model_weight_path = data_root + "/wuhuaisj/L_sv_sv_torch/resnet34-333f7ec4.pth"
+# 加载已经别人已经构建好的模型 resnet 和训练好的权重
+# 使用较大的网络效果较好
+net_use = 'resnet101'
+model_urls = {
+    'resnet18': 'resnet18-f37072fd.pth',
+    'resnet34': 'resnet34-b627a593.pth',
+    'resnet50': 'resnet50-0676ba61.pth',
+    'resnet101': 'resnet101-63fe2227.pth',
+    'resnet152': 'resnet152-394f9c45.pth',
+    'resnext50_32x4d': 'resnext50_32x4d-7cdf4587.pth',
+    'resnext101_32x8d': 'resnext101_32x8d-8ba56ff5.pth',
+    'wide_resnet50_2': 'wide_resnet50_2-95faca4d.pth',
+    'wide_resnet101_2': 'wide_resnet101_2-32ee1156.pth',
+}
+net = None
+if net_use == 'resnet18':
+    net = resnet18()
+elif net_use == 'resnet34':
+    net = resnet34()
+elif net_use == 'resnet50':
+    net = resnet50()
+elif net_use == 'resnet101':
+    net = resnet101()
+elif net_use == 'resnet152':
+    net = resnet152()
+elif net_use == 'resnext50_32x4d':
+    net = resnext50_32x4d()
+elif net_use == 'resnext101_32x8d':
+    net = resnext101_32x8d()
+else:
+    raise Exception('please use correct resnt name')
+model_weight_path = os.path.join(store_root, 'resnet', model_urls[net_use])
 assert os.path.exists(model_weight_path), "file {} does not exist.".format(model_weight_path)
 net.load_state_dict(torch.load(model_weight_path, map_location=device))
-
 net.to(device)
 
-# define loss function
 '''
-DataLoader还需要重新写，写成anchor,positive,negative三个张量数组
-[ [anchor,positive,negative],...,[anchor,positive,negative]]的tensor
+定义loss函数 tripletmarginloss 
+https://pytorch.org/docs/1.2.0/nn.html#tripletmarginloss
+pytorch提供的loss函数，目前似乎不支持多个正样本
+margin ？| a+p-n+margin | 设置多少我不知道，怎么调整我不知道 default:1
+如果 loss 稳定在 margin 左右，可能是网络陷入了局部极值，导致对所有样本的预测都是相同的
+p default 2
 '''
 triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
 
@@ -62,27 +120,23 @@ triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
 params = [p for p in net.parameters() if p.requires_grad]
 optimizer = optim.Adam(params, lr=0.0001)
 
-epochs = 1
-best_acc = 0.0
-
-losses = []
 epochs = 3
-best_acc = 0.0
 train_steps = len(train_loader)
 
+losses = []
 uuid_str = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
 
 for epoch in range(epochs):
     # 构造存储路径
 
     tmp_loss_name = '%s_epoch%d.txt' % (uuid_str, epoch)
-    loss_path = os.path.join(data_root, 'wuhuaisj', 'L_sv_sv_torch', 'loss_store', 'loss_txt') + "/" + tmp_loss_name
+    loss_path = os.path.join(store_root, 'loss_store', 'loss_txt') + "/" + tmp_loss_name
 
     tmp_file_name = '%s_epoch%d.pth' % (uuid_str, epoch)
-    save_path = os.path.join(data_root, 'wuhuaisj', 'L_sv_sv_torch', 'result_store') + "/" + tmp_file_name
+    save_path = os.path.join(store_root, 'result_store') + "/" + tmp_file_name
 
     tmp_pic_name = '%s_epoch%d.png' % (uuid_str, epoch)
-    pic_path = os.path.join(data_root, 'wuhuaisj', 'L_sv_sv_torch', 'loss_store', 'loss_png') + "/" + tmp_pic_name
+    pic_path = os.path.join(store_root, 'loss_store', 'loss_png') + "/" + tmp_pic_name
 
     net.train()
     running_loss = 0.0

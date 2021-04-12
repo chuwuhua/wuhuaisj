@@ -52,8 +52,8 @@ class ProcessData(Dataset):
 
         self.triplets_sample = []
         for anchor in range(self.data_num):
-            positive_sample = np.random.choice(dist[anchor].argsort()[1:5])
-            negative_sample = np.random.choice(dist[anchor].argsort()[30:])
+            positive_sample = np.random.choice(dist[anchor].argsort()[1:6])
+            negative_sample = np.random.choice(dist[anchor].argsort()[self.data_num//2:(self.data_num*3)//4])
             self.triplets_sample.append([
                 '_'.join(locations_wgs84[anchor])+'.jpg',
                 '_'.join(locations_wgs84[positive_sample])+'.jpg',
