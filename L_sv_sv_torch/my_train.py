@@ -10,8 +10,9 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from tqdm import tqdm
-from my_code.L_sv_sv_torch.model import resnet34
-from my_code.L_sv_sv_torch.process_data import ProcessData
+from L_sv_sv_torch.model import resnet34
+from L_sv_sv_torch.process_data import ProcessData
+
 
 # 使用cpu或gpu
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
