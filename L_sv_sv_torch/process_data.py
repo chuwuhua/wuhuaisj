@@ -17,12 +17,13 @@ from pyproj import transform as tfm
 p1 = Proj(proj='merc', datum='WGS84')
 p2 = Proj(proj='latlon', datum='WGS84')
 class ProcessData(Dataset):
-    def __init__(self,data_src,train=True,transform=None):
+    def __init__(self,data_src,train=True,positive_size = 1,transform=None):
         if train:
             self.data_src = os.path.join(data_src, 'train')
         else:
             self.data_src = os.path.join(data_src, 'val')
         self.transform = transform
+        self.positive_size = positive_size
         self.process()
     def __len__(self):
         return self.data_num
@@ -52,12 +53,17 @@ class ProcessData(Dataset):
 
         self.triplets_sample = []
         for anchor in range(self.data_num):
-            positive_sample = np.random.choice(dist[anchor].argsort()[1:6])
+            positive_sample = dist[anchor].argsort()[1:self.positive_size+1]
             negative_sample = np.random.choice(dist[anchor].argsort()[self.data_num//2:(self.data_num*3)//4])
             self.triplets_sample.append([
-                '_'.join(locations_wgs84[anchor])+'.jpg',
-                '_'.join(locations_wgs84[positive_sample])+'.jpg',
-                '_'.join(locations_wgs84[negative_sample])+'.jpg',
+                '_'.join(locations_wgs84[anchor])+'.jpg'
+            ])
+            for i in positive_sample:
+                self.triplets_sample.append([
+                    '_'.join(locations_wgs84[i]) + '.jpg'
+                ])
+            self.triplets_sample.append([
+                '_'.join(locations_wgs84[negative_sample]) + '.jpg'
             ])
     # 利用numpy快速计算距离矩阵
     def complete_distance_no_loops(self,X):

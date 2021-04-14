@@ -55,12 +55,16 @@ data_transform = {
 
 # 加载自己的数据集，已经重写DataLoader函数，将数据集构造成 [anchor,positive,negative ]的样本
 # anchor:锚点，positive：最近的5个图片中随机选取一个，negative:1/2~3/4 距离样本中随机选取一个
+#   positive的选择是最近的5个，然后再计算多个的tripletloss并相加
+#   并没有搞清楚，所以设定positive_size,便于修改，default:1
 # train_dataset：训练集 validate_dataset: 测试集
 
 image_path = os.path.join(data_root, "原始数据", "imgForTorch")
 assert os.path.exists(image_path), "{} path does not exist.".format(image_path)  # assert 检查条件，符合则继续运行，否则停止
 
-train_dataset = ProcessData(image_path, train=True, transform=data_transform['train'])
+positive_size = 5
+print("using {} positive sample for training".format(positive_size))
+train_dataset = ProcessData(image_path, train=True,positive_size=5, transform=data_transform['train'])
 train_num = len(train_dataset)
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=nw)
 
@@ -121,8 +125,6 @@ reduction:不推荐使用
 '''
 triplet_loss = nn.TripletMarginLoss(margin=1.0, p=2)
 
-
-
 '''
 net.parameters() 获取网络参数
 requires_grad=False 固定参数  =True 非固定参数
@@ -167,12 +169,14 @@ for epoch in range(epochs):
     running_loss = 0.0
     train_bar = tqdm(train_loader)  #进度条美化
     for step, image_sample in enumerate(train_bar):
-        anchor_sample, positive_sample, negative_sample = image_sample
+        anchor_sample, positive_samples, negative_sample = image_sample
         optimizer.zero_grad() # 每个batch梯度置零
         anchor_logits = net(anchor_sample.to(device))
-        positive_logits = net(positive_sample.to(device))
         negative_logits = net(negative_sample.to(device))
-        loss = triplet_loss(anchor_logits, positive_logits, negative_logits)
+        loss = 0
+        for positive_sample in positive_samples:
+            positive_logits = net(positive_sample.to(device))
+            loss = triplet_loss(anchor_logits, positive_logits, negative_logits)
 
         loss.backward() # 反向传播，计算当前梯度
         optimizer.step() # 根据梯度更新网络参数
