@@ -59,6 +59,7 @@ class PeopleCS():
 
     # 切割出长沙市区部分
     def cut(self, num=4):
+        self.num = num
         shi = [111.890866, 27.851024, 114.256514, 28.664368]
         if num == 4:
             print('四区：开福区，芙蓉区，天心区，雨花区')
@@ -70,24 +71,41 @@ class PeopleCS():
         shi_x = (shi[2] - shi[0]) / 232
         shi_y = (shi[3] - shi[1]) / 80
         arr = []
+        xy = []
         for i in range(232):
             if shi[0] + shi_x * i <= qu[0] <= shi[0] + shi_x * (i + 1):
-                print('较小经度{},粒度{}'.format(shi[0]+shi_x*i,shi_x))
+                print('较小经度{},粒度{}'.format(shi[0] + shi_x * i, shi_x))
                 arr.append(i)
+                xy.append(shi[0] + shi_x * i)
             if shi[0] + shi_x * i <= qu[2] <= shi[0] + shi_x * (i + 1):
-                print('较大经度{},粒度{}'.format(shi[0] + shi_x * (i+1), shi_x))
+                print('较大经度{},粒度{}'.format(shi[0] + shi_x * (i + 1), shi_x))
                 arr.append(i + 1)
+                xy.append(shi[0] + shi_x * (i + 1))
         for i in range(80):
             if shi[3] - shi_y * i >= qu[3] >= shi[3] - shi_y * (i + 1):
-                print('较大纬度{},粒度{}'.format(shi[3]-shi_y*i,shi_y))
+                print('较大纬度{},粒度{}'.format(shi[3] - shi_y * i, shi_y))
                 arr.append(i)
+                xy.append(shi[3] - shi_y * i)
             if shi[3] - shi_y * i >= qu[1] >= shi[3] - shi_y * (i + 1):
-                print('较小纬度{},粒度{}'.format(shi[3]-shi_y*(i+1),shi_y))
+                print('较小纬度{},粒度{}'.format(shi[3] - shi_y * (i + 1), shi_y))
                 arr.append(i + 1)
+                xy.append(shi[3] - shi_y * (i + 1))
+        self.range = arr
+        self.xy = xy
         print('行列范围:行：{}-{},列:{}-{}.（含左不含右）'.format(arr[0], arr[1], arr[2], arr[3]))
         self.data_use_cut = self.data_use[arr[2]:arr[3]]
         self.data_use_cut = self.data_use_cut[:, arr[0]:arr[1]]
         self.cut_ = True
+
+    def store(self):
+        file_path = os.path.abspath(os.path.join(self.data_path, '..'))
+        file_name = 'data_cs_' + str(self.num) + '区_time_' + str(self.num) + ".h5"
+        store_path = os.path.join(file_path, file_name)
+        f = h5py.File(store_path, mode='w')
+        f.create_dataset(name='data_cs', data=self.data_use_cut)
+        f.create_dataset(name='data_xy', data=self.xy)
+        f.create_dataset(name='data_range', data=self.range)
+        f.close()
 
 
 if __name__ == '__main__':
@@ -97,7 +115,9 @@ if __name__ == '__main__':
     cs.set('7:30')
     cs.show()
     cs.cut(num=4)
+    cs.store()
     cs.show()
     cs.cut(num=6)
+    cs.store()
     cs.show()
     print('end')
