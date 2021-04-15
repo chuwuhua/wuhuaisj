@@ -96,7 +96,7 @@ class PeopleCS():
         self.data_use_cut = self.data_use[arr[2]:arr[3]]
         self.data_use_cut = self.data_use_cut[:, arr[0]:arr[1]]
         self.cut_ = True
-
+    # 数据存储
     def store(self):
         file_path = os.path.abspath(os.path.join(self.data_path, '..'))
         file_name = 'data_cs_' + str(self.num) + '区_time_' + str(self.num) + ".h5"
@@ -116,8 +116,8 @@ if __name__ == '__main__':
     cs.show()
     cs.cut(num=4)
     cs.store()
-    cs.show()
+    # cs.show()
     cs.cut(num=6)
-    cs.store()
+    # cs.store()
     cs.show()
     print('end')
