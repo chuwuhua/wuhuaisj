@@ -13,10 +13,10 @@ import numpy as np
 import pymysql  # 自定义pymysql类
 import time
 # 连接数据库
-myCon = pymysql.connect(host='127.0.0.1', port=3306, database='sv_new', user='root', passwd='wuhuaisj')
+myCon = pymysql.connect(host='127.0.0.1', port=3306, database='img', user='root', passwd='wuhuaisj')
 cursor = myCon.cursor()
 
-myCon1 = pymysql.connect(host='127.0.0.1', port=3306, database='sv_new', user='root', passwd='wuhuaisj')
+myCon1 = pymysql.connect(host='127.0.0.1', port=3306, database='img', user='root', passwd='wuhuaisj')
 cursor1 = myCon1.cursor()
 
 def getPanoBylocation_(location, img_name):
@@ -36,12 +36,12 @@ def getPanoBylocation_(location, img_name):
         name = jsonMess['detail']['road_name']  # 道路名称
         print('查询成功%s' % (pano))
         # 查询记录是否存在，存在则无需再次下载
-        sql = "SELECT * FROM streeImg WHERE id ='" + pano + "'"
+        sql = "SELECT * FROM streetimg WHERE id ='" + pano + "'"
         cursor1.execute(sql)
         resData = cursor1.fetchall()
         if len(resData) == 0:
             # 插入记录
-            sql = "INSERT INTO streeimg (id,name,lat,lng,detail) VALUES (%s, %s, %s, %s, %s)"
+            sql = "INSERT INTO streetimg (id,name,lat,lng,detail) VALUES (%s, %s, %s, %s, %s)"
             val = (pano, name, float(lat), float(lng), text)
             cursor.execute(sql, val)
             myCon.commit()
@@ -204,7 +204,7 @@ def getImage(start_point, end_point, cityName):
             if jins_i > jins_num - jins_c:  # 保证索引不越界
                 jinFlag = 'true'
                 break
-        jin = round(jins[jins_i], 5)
+        jin = round(jins[jins_i], 7)
         for weis_i in range(weis_num):
             if goFlag == 'true':
                 if len(indexArr) == 2:
@@ -215,13 +215,13 @@ def getImage(start_point, end_point, cityName):
                 if weis_i > weis_num - weis_c:  # 保证索引不越界
                     weiFlag = 'true'
                     break
-            wei = round(weis[weis_i], 5)
+            wei = round(weis[weis_i], 7)
             # 断点续爬 （记录经纬度索引）
             saveText(filePath, str(jins_i) + '_' + str(weis_i))
             # 这里要注意下，对应的经纬度没有街景图的地方，输出的会是无效图片
             print(jin, wei)
             # D:\python\django\GeoModel
-            img_name = "D:\\python\\django\\GeoModel\\ImageGet\\streetImgData\\" + cityName + "\\" + str(
+            img_name = "D:\\项目工作\\不完备数据\\数据融合实验\\原始数据\\长沙市四区街景地图" + cityName + "\\" + str(
                 wei) + "_" + str(jin) + ".jpg"
             getPanoBylocation_(str(wei) + "," + str(jin), img_name)
             time.sleep(5)
@@ -231,7 +231,7 @@ def getImage(start_point, end_point, cityName):
 # 113.06958759138627,28.27550641121654
 if __name__ == '__main__':
     # 定义数据字典 根据起始点坐标推算内容坐标
-    cityJinweiArr = [{"start": "112.94124111946027,28.086146863446505", "end": "113.06958759138627,28.27550641121654",
+    cityJinweiArr = [{"start": "112.90034510344827,27.912024799999998", "end": "113.18585434482759,28.4000312",
                       "city": "ChangSha"}]
     for city in cityJinweiArr:
         start_point = getPoint(city['start'])
