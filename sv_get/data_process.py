@@ -61,7 +61,10 @@ class PeopleCS():
     def cut(self, num=4):
         self.num = num
         shi = [111.890866, 27.851024, 114.256514, 28.664368]
-        if num == 4:
+        if num == 1:
+            print('一区：芙蓉区')
+            qu = [112.970419, 28.17616, 113.103032, 28.227567]  # 一区
+        elif num == 4:
             print('四区：开福区，芙蓉区，天心区，雨花区')
             qu = [112.903165, 27.914597, 113.182139, 28.392893]  # 四区
         else:
@@ -114,9 +117,12 @@ if __name__ == '__main__':
     cs = PeopleCS(data_path)
     cs.set('7:30')
     cs.show()
-    cs.cut(num=4)
+    cs.cut(num=1)
+    cs.show()
     cs.store()
-    # cs.show()
+    cs.cut(num=4)
+    # cs.store()
+    cs.show()
     cs.cut(num=6)
     # cs.store()
     cs.show()

@@ -9,13 +9,18 @@ data_root = os.path.abspath(os.path.join(os.getcwd(), "../.."))
 data_path = os.path.join(data_root, '原始数据', '全国省市县行政区划界线', '县.shp')
 
 shp_df = geopandas.GeoDataFrame.from_file(data_path, encoding='utf-8')
-cs = shp_df.loc[shp_df['NAME'].isin(['天心区','芙蓉区','开福区' ,'雨花区','望城区','岳麓区'])]
+# cs = shp_df.loc[shp_df['NAME'].isin(['天心区','芙蓉区','开福区' ,'雨花区','望城区','岳麓区'])]
+cs = shp_df.loc[shp_df['NAME'].isin(['芙蓉区'])]
 print(cs.bounds)
 
 '''
 长沙市范围
           minx       miny        maxx       maxy
 185  111.890866  27.851024  114.256514  28.664368
+
+一区范围 芙蓉区
+minx      miny        maxx       maxy
+1592  112.970419  28.17616  113.103032  28.227567
 
 四区范围
         minx       miny        maxx       maxy
