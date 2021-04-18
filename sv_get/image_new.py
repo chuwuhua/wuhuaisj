@@ -78,7 +78,7 @@ def getImage(utm_x, utm_y, city):
             myCon.commit()
             # 全景图url
             url = "http://sv1.map.qq.com/thumb?svid=" + pano + "&x=0&y=0&from=web&level=0&size=0"
-            img_name = path + str(wgs84_x) + "_" + str(wgs84_y) + ".jpg"
+            img_name = path + pano + ".jpg"
             # 分级瓦片
             download(url, img_name, pano)
         else:
@@ -98,10 +98,10 @@ def processXY(start, end, city, granularity):
     wgs84_y_end = end[1]
     utm_x_start, utm_y_start = Trans.WGS84_to_WebMercator(lng=wgs84_x_start, lat=wgs84_y_start)
     utm_x_end, utm_y_end = Trans.WGS84_to_WebMercator(lng=wgs84_x_end, lat=wgs84_y_end)
-    utm_x_start = int(utm_x_start // 10)
-    utm_y_start = int(utm_y_start // 10)
-    utm_x_end = int(utm_x_end // 10 + 1)
-    utm_y_end = int(utm_y_end // 10 + 1)
+    utm_x_start = int(utm_x_start // granularity) * granularity
+    utm_y_start = int(utm_y_start // granularity) * granularity
+    utm_x_end = int(utm_x_end // granularity ) * granularity
+    utm_y_end = int(utm_y_end // granularity) * granularity
     # 用redis存储已经搜索到的位置,此处来获取搜索到的位置（索引位置）
     position_x = int(r.get('position_x'))
     position_y = int(r.get('position_y'))
