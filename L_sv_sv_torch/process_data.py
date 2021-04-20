@@ -30,13 +30,29 @@ class ProcessData(Dataset):
 
 
     def __getitem__(self, item):
-        sample = []
-        for image_name in  self.triplets_sample[item]:
-            image = Image.open(os.path.join(self.data_src,image_name))
-            if self.transform:
-                image = self.transform(image)
-            sample.append(image)
-        return sample[0],sample[1],sample[2]
+        if self.transform:
+            anchor_image = Image.open(os.path.join(self.data_src,self.triplets_sample[item][0]))
+            anchor_image = self.transform(anchor_image)
+
+            negative_image = Image.open(os.path.join(self.data_src,self.triplets_sample[item][2]))
+            negative_image = self.transform(negative_image)
+
+            positive_images=[]
+            for p in self.triplets_sample[item][1]:
+                positive_image = Image.open(os.path.join(self.data_src,p))
+                positive_image = self.transform(positive_image)
+                positive_images.append(positive_image)
+            return anchor_image,positive_images,negative_image
+        else:
+            anchor_image = Image.open(os.path.join(self.data_src,self.triplets_sample[item][0]))
+    
+            negative_image = Image.open(os.path.join(self.data_src,self.triplets_sample[item][2]))
+            
+            positive_images=[]
+            for p in self.triplets_sample[item][1]:
+                positive_image = Image.open(os.path.join(self.data_src,p))
+                positive_images.append(positive_image)
+            return anchor_image,positive_images,negative_image
     # 构建锚点、正样本、负样本的数组
     # 图片名称包含经纬度，可快速查找得到结果
     def process(self):
@@ -55,14 +71,16 @@ class ProcessData(Dataset):
         for anchor in range(self.data_num):
             positive_sample = dist[anchor].argsort()[1:self.positive_size+1]
             negative_sample = np.random.choice(dist[anchor].argsort()[self.data_num//2:(self.data_num*3)//4])
-            self.triplets_sample.append([
-                '_'.join(locations_wgs84[anchor])+'.jpg'
-            ])
+            
+            positive_container = []
             for i in positive_sample:
-                self.triplets_sample.append([
+                positive_container.append(
                     '_'.join(locations_wgs84[i]) + '.jpg'
-                ])
+                )
+            
             self.triplets_sample.append([
+                '_'.join(locations_wgs84[anchor])+'.jpg',
+                positive_container,
                 '_'.join(locations_wgs84[negative_sample]) + '.jpg'
             ])
     # 利用numpy快速计算距离矩阵
